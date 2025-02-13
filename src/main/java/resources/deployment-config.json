@@ -1,6 +1,6 @@
   {
     "nodes": [
-      { "name": "node-1", "command": "java -cp /build/classes/java/main/com/kvstore/server/KVNode.class com.kvstore.server.KVNode" },
-      { "name": "node-2", "command": "java -cp /build/classes/java/main/com/kvstore/server/KVNode.class com.kvstore.server.KVNode" }
+      { "name": "node-1", "command": "com.kvstore.server.KVNode" },
+      { "name": "node-2", "command": "com.kvstore.server.KVNode" }
     ]
   }

@@ -10,8 +10,12 @@ import java.net.InetSocketAddress;
 
 public class ExternalHttpServer {
     public static void main(String[] args) throws Exception {
+
+        String nodeName = args[0];
+        int httpPort = Integer.parseInt(args[1]);
+
         // Start the HTTP server
-        HttpServer httpServer = HttpServer.create(new InetSocketAddress(8080), 0);
+        HttpServer httpServer = HttpServer.create(new InetSocketAddress(httpPort), 0);
 
         // Define endpoints
         httpServer.createContext("/", new RootHandler());
@@ -20,7 +24,7 @@ public class ExternalHttpServer {
         // Start the server
         httpServer.setExecutor(null); // Default executor
         httpServer.start();
-        System.out.println("HTTP server started on port 8080");
+        System.out.println("HTTP server started on port " + httpPort);
     }
 
     // Root handler ("/")

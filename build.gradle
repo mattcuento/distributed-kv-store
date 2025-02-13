@@ -23,7 +23,7 @@ java {
 }
 
 application {
-    mainClass = 'com.kvstore.app.Application'
+    mainClass = 'com.kvstore.app.MasterCoordinator'
 }
 
 

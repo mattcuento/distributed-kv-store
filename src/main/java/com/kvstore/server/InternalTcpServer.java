@@ -8,10 +8,12 @@ import java.net.Socket;
 
 public class InternalTcpServer {
     public static void main(String[] args) {
-        int port = 9090; // Internal TCP port for node communication
 
-        try (ServerSocket serverSocket = new ServerSocket(port)) {
-            System.out.println("TCP server listening on port " + port);
+        String nodeName = args[0];
+        int tcpPort = Integer.parseInt(args[1]);
+
+        try (ServerSocket serverSocket = new ServerSocket(tcpPort)) {
+            System.out.println("TCP server listening on port " + tcpPort);
 
             while (true) {
                 // Accept incoming connections from other nodes
