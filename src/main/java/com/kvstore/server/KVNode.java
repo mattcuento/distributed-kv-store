@@ -1,14 +1,19 @@
 package com.kvstore.server;
 
+import com.kvstore.core.DurableKeyValueStore;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 
 public class KVNode {
-    public static void main(String[] args) {
+    private DurableKeyValueStore backingStore;
 
+    public static void main(String[] args) {
         String nodeName = args[0];
         String httpPort = args[1];
         String tcpPort = args[2];
+
+        this.backingStore = new DurableKeyValueStore(nodeName, 100);
 
         // create string array of args 0 and 1
 
