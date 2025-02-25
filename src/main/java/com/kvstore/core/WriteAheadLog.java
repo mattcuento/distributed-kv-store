@@ -2,39 +2,52 @@ package com.kvstore.core;
 
 import com.kvstore.OperationType;
 import java.io.*;
+import java.nio.channels.FileChannel;
 import java.nio.file.Paths;
-import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class WriteAheadLog {
-    private final File walFile;
-    private final BufferedWriter bufferedWriter;
     private final ReentrantLock fileLock;
+    private final File walFile;
+    private final FileWriter walFileWriter;
     private final ScheduledExecutorService snapshotScheduler;
+    private BufferedWriter bufferedWalWriter;
 
-    public WriteAheadLog(String filename) {
-        this.walFile = Paths.get(filename).toFile();
+    public WriteAheadLog(String filename) throws IOException {
         this.fileLock = new ReentrantLock();
+        this.walFile = Paths.get(filename).toFile();
         this.snapshotScheduler = Executors.newSingleThreadScheduledExecutor();
         try {
             walFile.createNewFile();
-            this.bufferedWriter = new BufferedWriter(new FileWriter(walFile, true));
+            this.walFileWriter = new FileWriter(walFile, true);
+            this.bufferedWalWriter = new BufferedWriter(this.walFileWriter);
         } catch (IOException e) {
             throw new RuntimeException("Failed to create WAL file: " + filename, e);
         }
 
-//        this.snapshotScheduler.scheduleAtFixedRate();
-        // todo schedule snapshotting
+        this.snapshotScheduler.scheduleAtFixedRate(
+            () -> {
+                try {
+                    this.takeSnapshot();
+                } catch (IOException e) {
+                   System.out.println("Failed to take snapshot!");
+                }
+            },
+            600,
+            600,
+            TimeUnit.SECONDS
+        );
     }
 
     public void recordOperation(OperationType operationType, String key, String value) {
         try {
             this.fileLock.lock();
             String logEntry = operationType + "," + key + "," + (value != null ? value : "") + "\n";
-            bufferedWriter.write(logEntry);
-            bufferedWriter.flush();
+            bufferedWalWriter.write(logEntry);
+            bufferedWalWriter.flush();
         } catch (IOException e) {
             throw new RuntimeException("Failed to write to WAL file: " + walFile.getAbsolutePath(), e);
         } finally {
@@ -66,6 +79,7 @@ public class WriteAheadLog {
                 if (!snapshotTmpFile.renameTo(snapshotFile)) {
                     throw new IOException("Failed to rename snapshot file from " + snapshotTmpFile + " to " + snapshotFile);
                 }
+                this.truncateWal();
                 return snapshotFile;
             }
         } finally {
@@ -73,7 +87,22 @@ public class WriteAheadLog {
         }
     }
 
-    public void closeWriter() throws IOException {
-        bufferedWriter.close();
+    private void truncateWal() throws IOException {
+        this.closeWalWriter();
+        try (RandomAccessFile raf = new RandomAccessFile(this.walFile.getPath(), "rw");
+             FileChannel fileChannel = raf.getChannel()) {
+            fileChannel.truncate(0);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        setNewWalWriter();
+    }
+
+    private void closeWalWriter() throws IOException {
+        bufferedWalWriter.close();
+    }
+
+    private void setNewWalWriter() throws IOException {
+        this.bufferedWalWriter = new BufferedWriter(this.walFileWriter);
     }
 }

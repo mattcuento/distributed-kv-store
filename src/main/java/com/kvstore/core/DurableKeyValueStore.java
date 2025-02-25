@@ -2,6 +2,7 @@ package com.kvstore.core;
 
 import com.kvstore.OperationType;
 
+import java.io.IOException;
 import java.time.Instant;
 import java.util.HashMap;
 
@@ -11,7 +12,7 @@ public class DurableKeyValueStore {
 
     private final WriteAheadLog writeAheadLog;
 
-    public DurableKeyValueStore(String nodeName) {
+    public DurableKeyValueStore(String nodeName) throws IOException {
         this.valueMap = new HashMap<>(); // add capacity
         this.writeAheadLog = new WriteAheadLog(nodeName + Instant.now().toEpochMilli());
     }
