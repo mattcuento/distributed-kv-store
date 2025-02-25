@@ -5,7 +5,7 @@ import java.util.HashMap;
 
 public class DurableKeyValueStore {
 
-    private final HashMap<Byte[], Byte[]> valueMap;
+    private final HashMap<String, String> valueMap;
 
     private final WriteAheadLog writeAheadLog;
 
@@ -14,16 +14,17 @@ public class DurableKeyValueStore {
         this.writeAheadLog = new WriteAheadLog(nodeName + Instant.now().toEpochMilli());
     }
 
-    public Byte[] get(Byte[] key) {
-        Byte[] maybeValue = this.valueMap.get(key);
+    public String get(String key) {
+        String maybeValue = this.valueMap.get(key);
         if (maybeValue != null) {
             return maybeValue;
         }
         // check disk
+        return null;
     }
 
-    public boolean put(Byte[] key, Byte[] value) {
-        Byte[] maybeValue = this.valueMap.get(key);
+    public boolean put(String key, String value) {
+        String maybeValue = this.valueMap.get(key);
         if (maybeValue != null) {
             // clear from mem and disk?
         }

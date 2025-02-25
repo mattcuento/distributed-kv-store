@@ -1,5 +1,6 @@
 package com.kvstore.server;
 
+import com.kvstore.core.DurableKeyValueStore;
 import com.sun.net.httpserver.HttpServer;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpExchange;
@@ -7,24 +8,28 @@ import com.sun.net.httpserver.HttpExchange;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
+import java.nio.charset.StandardCharsets;
 
 public class ExternalHttpServer {
-    public static void main(String[] args) throws Exception {
+    private final DurableKeyValueStore store;
+    private final HttpServer server;
 
-        String nodeName = args[0];
-        int httpPort = Integer.parseInt(args[1]);
-
-        // Start the HTTP server
-        HttpServer httpServer = HttpServer.create(new InetSocketAddress(httpPort), 0);
+    public ExternalHttpServer(String nodeName, int httpPort, DurableKeyValueStore store) throws IOException {
+        this.store = store;
+        this.server = HttpServer.create(new InetSocketAddress(httpPort), 0);
 
         // Define endpoints
-        httpServer.createContext("/", new RootHandler());
-        httpServer.createContext("/status", new StatusHandler());
+        server.createContext("/", new RootHandler());
+        server.createContext("/status", new StatusHandler());
+        server.createContext("/get", new GetHandler());
+        server.createContext("/put", new PutHandler());
 
-        // Start the server
-        httpServer.setExecutor(null); // Default executor
-        httpServer.start();
-        System.out.println("HTTP server started on port " + httpPort);
+        server.setExecutor(null); // Default executor
+    }
+
+    public void start() {
+        server.start();
+        System.out.println("HTTP server started on port " + server.getAddress().getPort());
     }
 
     // Root handler ("/")
@@ -32,11 +37,7 @@ public class ExternalHttpServer {
         @Override
         public void handle(HttpExchange exchange) throws IOException {
             String response = "Welcome to the External HTTP Server!";
-            exchange.sendResponseHeaders(200, response.getBytes().length);
-
-            OutputStream os = exchange.getResponseBody();
-            os.write(response.getBytes());
-            os.close();
+            sendResponse(exchange, response, 200);
         }
     }
 
@@ -45,11 +46,65 @@ public class ExternalHttpServer {
         @Override
         public void handle(HttpExchange exchange) throws IOException {
             String response = "Server is running and listening for HTTP requests.";
-            exchange.sendResponseHeaders(200, response.getBytes().length);
+            sendResponse(exchange, response, 200);
+        }
+    }
 
-            OutputStream os = exchange.getResponseBody();
-            os.write(response.getBytes());
-            os.close();
+    // GET handler ("/get?key=someKey")
+    class GetHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            if (!"GET".equals(exchange.getRequestMethod())) {
+                sendResponse(exchange, "Invalid request method", 405);
+                return;
+            }
+
+            String query = exchange.getRequestURI().getQuery();
+            if (query == null || !query.startsWith("key=")) {
+                sendResponse(exchange, "Missing 'key' parameter", 400);
+                return;
+            }
+
+            String key = query.substring(4); // Extract key value
+            String value = store.get(key);
+
+            if (value == null) {
+                sendResponse(exchange, "Key not found", 404);
+            } else {
+                sendResponse(exchange, value, 200);
+            }
+        }
+    }
+
+    // PUT handler ("/put?key=someKey&value=someValue")
+    class PutHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            if (!"PUT".equals(exchange.getRequestMethod())) {
+                sendResponse(exchange, "Invalid request method", 405);
+                return;
+            }
+
+            String query = exchange.getRequestURI().getQuery();
+            if (query == null || !query.contains("key=") || !query.contains("&value=")) {
+                sendResponse(exchange, "Missing 'key' or 'value' parameter", 400);
+                return;
+            }
+
+            String[] params = query.split("&");
+            String key = params[0].split("=")[1];
+            String value = params[1].split("=")[1];
+
+            store.put(key, value);
+            sendResponse(exchange, "Stored successfully", 200);
+        }
+    }
+
+    private static void sendResponse(HttpExchange exchange, String response, int statusCode) throws IOException {
+        byte[] bytes = response.getBytes(StandardCharsets.UTF_8);
+        exchange.sendResponseHeaders(statusCode, bytes.length);
+        try (OutputStream os = exchange.getResponseBody()) {
+            os.write(bytes);
         }
     }
 }
