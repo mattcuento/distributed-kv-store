@@ -2,10 +2,12 @@ package com.kvstore.server;
 
 import com.kvstore.core.DurableKeyValueStore;
 
+import java.io.IOException;
+
 public class KVNode {
     private final DurableKeyValueStore backingStore;
 
-    public KVNode(String nodeName) {
+    public KVNode(String nodeName) throws IOException {
         this.backingStore = new DurableKeyValueStore(nodeName);
     }
 
@@ -32,7 +34,7 @@ public class KVNode {
         System.out.println("Both HTTP and TCP servers are running...");
     }
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws IOException {
         if (args.length < 3) {
             System.err.println("Usage: java KVNode <nodeName> <httpPort> <tcpPort>");
             return;

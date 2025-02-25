@@ -1,12 +1,8 @@
-startKVServer:
+startApp:
 	./gradlew build & ./gradlew run
 
-startMaster:
-	java -cp myapp.jar com.kvstore.app.MasterCoordinator
+getKey:
+	curl http://127.0.0.1:$(PORT)/get?key=$(KEY)
 
-startWorkers:
-	java -cp myapp.jar com.kvstore.server.ExternalHttpServer &
-	java -cp myapp.jar com.kvstore.server.InternalTcpServer &
-
-monitorSystem:
-	curl http://127.0.0.1:8080/status
+putKeyValue:
+	curl -X POSThttp://127.0.0.1:$(PORT)/put?key=$(KEY)%value=$(VALUE)

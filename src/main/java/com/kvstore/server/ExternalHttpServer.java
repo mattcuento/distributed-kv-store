@@ -21,6 +21,7 @@ public class ExternalHttpServer {
         // Define endpoints
         server.createContext("/get", new GetHandler());
         server.createContext("/put", new PutHandler());
+        server.createContext("/delete", new DeleteHandler());
 
         server.setExecutor(null); // Default executor
     }
@@ -77,6 +78,27 @@ public class ExternalHttpServer {
 
             store.put(key, value);
             sendResponse(exchange, "Stored successfully", 200);
+        }
+    }
+
+    // DELETE handler ("/delete?key=someKey")
+    class DeleteHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            if (!"DELETE".equals(exchange.getRequestMethod())) {
+                sendResponse(exchange, "Invalid request method", 405);
+                return;
+            }
+
+            String query = exchange.getRequestURI().getQuery();
+            if (query == null || !query.startsWith("key=")) {
+                sendResponse(exchange, "Missing 'key' parameter", 400);
+                return;
+            }
+
+            String key = query.substring(4); // Extract key value
+            store.delete(key);
+            sendResponse(exchange, "Key Deleted", 200);
         }
     }
 
