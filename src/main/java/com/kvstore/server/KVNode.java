@@ -6,7 +6,7 @@ public class KVNode {
     private final DurableKeyValueStore backingStore;
 
     public KVNode(String nodeName) {
-        this.backingStore = new DurableKeyValueStore(nodeName, 100);
+        this.backingStore = new DurableKeyValueStore(nodeName);
     }
 
     public void startServers(String nodeName, String httpPort, String tcpPort) {

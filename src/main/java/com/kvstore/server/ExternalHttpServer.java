@@ -19,8 +19,6 @@ public class ExternalHttpServer {
         this.server = HttpServer.create(new InetSocketAddress(httpPort), 0);
 
         // Define endpoints
-        server.createContext("/", new RootHandler());
-        server.createContext("/status", new StatusHandler());
         server.createContext("/get", new GetHandler());
         server.createContext("/put", new PutHandler());
 
@@ -30,24 +28,6 @@ public class ExternalHttpServer {
     public void start() {
         server.start();
         System.out.println("HTTP server started on port " + server.getAddress().getPort());
-    }
-
-    // Root handler ("/")
-    static class RootHandler implements HttpHandler {
-        @Override
-        public void handle(HttpExchange exchange) throws IOException {
-            String response = "Welcome to the External HTTP Server!";
-            sendResponse(exchange, response, 200);
-        }
-    }
-
-    // Status handler ("/status")
-    static class StatusHandler implements HttpHandler {
-        @Override
-        public void handle(HttpExchange exchange) throws IOException {
-            String response = "Server is running and listening for HTTP requests.";
-            sendResponse(exchange, response, 200);
-        }
     }
 
     // GET handler ("/get?key=someKey")
@@ -80,7 +60,7 @@ public class ExternalHttpServer {
     class PutHandler implements HttpHandler {
         @Override
         public void handle(HttpExchange exchange) throws IOException {
-            if (!"PUT".equals(exchange.getRequestMethod())) {
+            if (!"POST".equals(exchange.getRequestMethod())) {
                 sendResponse(exchange, "Invalid request method", 405);
                 return;
             }
