@@ -33,11 +33,11 @@ import java.util.ArrayList;
 
       private final List<Node> nodes = new ArrayList<>();
 
-      public void launchNode(String name, String classString) throws IOException {
+      public void launchNode(String name, String classString, String databaseStrategy) throws IOException {
           int httpPort = getFreePort();
           int tcpPort = getFreePort();
           ProcessBuilder processBuilder = new ProcessBuilder(
-                  javaExec, "-cp", classPath, classString, name, String.valueOf(httpPort), String.valueOf(tcpPort)
+                  javaExec, "-cp", classPath, classString, name, String.valueOf(httpPort), String.valueOf(tcpPort), databaseStrategy
           );
           processBuilder.redirectOutput(ProcessBuilder.Redirect.INHERIT);
           processBuilder.redirectError(ProcessBuilder.Redirect.INHERIT);
@@ -63,7 +63,7 @@ import java.util.ArrayList;
               // Read the JSON file into an array of NodeConfig objects
               DeploymentConfig deploymentConfig = mapper.readValue(file, DeploymentConfig.class);
               for (NodeConfig node : deploymentConfig.nodes) {
-                  master.launchNode(node.getName(), node.getCommand());
+                  master.launchNode(node.getName(), node.getCommand(), deploymentConfig.strategy);
               }
           } catch (IOException e) {
               e.printStackTrace();

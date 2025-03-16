@@ -1,6 +1,6 @@
 package com.kvstore.server;
 
-import com.kvstore.core.DurableKeyValueStore;
+import com.kvstore.core.IDatabaseAPI;
 import com.sun.net.httpserver.HttpServer;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpExchange;
@@ -11,16 +11,16 @@ import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 
 public class ExternalHttpServer {
-    private final DurableKeyValueStore store;
+    private final IDatabaseAPI store;
     private final HttpServer server;
 
-    public ExternalHttpServer(String nodeName, int httpPort, DurableKeyValueStore store) throws IOException {
+    public ExternalHttpServer(String nodeName, int httpPort, IDatabaseAPI store) throws IOException {
         this.store = store;
         this.server = HttpServer.create(new InetSocketAddress(httpPort), 0);
 
         // Define endpoints
         server.createContext("/get", new GetHandler());
-        server.createContext("/put", new PutHandler());
+        server.createContext("/put", new PostHandler());
         server.createContext("/delete", new DeleteHandler());
 
         server.setExecutor(null); // Default executor
@@ -58,7 +58,7 @@ public class ExternalHttpServer {
     }
 
     // PUT handler ("/put?key=someKey&value=someValue")
-    class PutHandler implements HttpHandler {
+    class PostHandler implements HttpHandler {
         @Override
         public void handle(HttpExchange exchange) throws IOException {
             if (!"POST".equals(exchange.getRequestMethod())) {

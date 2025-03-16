@@ -1,4 +1,5 @@
   {
+    "strategy": "com.kvstore.core.InMemoryRecoverableDatabase",
     "nodes": [
       { "name": "node-1", "command": "com.kvstore.server.KVNode" },
       { "name": "node-2", "command": "com.kvstore.server.KVNode" }

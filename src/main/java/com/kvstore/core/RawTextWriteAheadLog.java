@@ -4,42 +4,27 @@ import com.kvstore.OperationType;
 import java.io.*;
 import java.nio.channels.FileChannel;
 import java.nio.file.Paths;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
-public class WriteAheadLog {
+public class RawTextWriteAheadLog implements IWriteAheadLogStrategy {
     private final ReentrantLock fileLock;
     private final File walFile;
     private final FileWriter walFileWriter;
-    private final ScheduledExecutorService snapshotScheduler;
+    private final String snapshotFilePrefix;
     private BufferedWriter bufferedWalWriter;
 
-    public WriteAheadLog(String filename) throws IOException {
+    public RawTextWriteAheadLog(String nodeName, String snapshotFilePrefix) throws IOException {
         this.fileLock = new ReentrantLock();
-        this.walFile = Paths.get(filename).toFile();
-        this.snapshotScheduler = Executors.newSingleThreadScheduledExecutor();
+        this.snapshotFilePrefix = snapshotFilePrefix;
+        this.walFile = Paths.get("wal-" + nodeName).toFile();
         try {
             walFile.createNewFile();
             this.walFileWriter = new FileWriter(walFile, true);
             this.bufferedWalWriter = new BufferedWriter(this.walFileWriter);
         } catch (IOException e) {
-            throw new RuntimeException("Failed to create WAL file: " + filename, e);
+            throw new RuntimeException("Failed to create WAL file: " + nodeName, e);
         }
 
-        this.snapshotScheduler.scheduleAtFixedRate(
-            () -> {
-                try {
-                    this.takeSnapshot();
-                } catch (IOException e) {
-                   System.out.println("Failed to take snapshot!");
-                }
-            },
-            600,
-            600,
-            TimeUnit.SECONDS
-        );
     }
 
     public void recordOperation(OperationType operationType, String key, String value) {
@@ -55,23 +40,23 @@ public class WriteAheadLog {
         }
     }
 
-    public File takeSnapshot() throws IOException {
+    public BufferedReader getWalBufferedReader() throws FileNotFoundException {
+        FileReader fileReader = new FileReader(this.walFile);
+        return new BufferedReader(fileReader);
+    }
+
+    public void takeSnapshot() throws IOException {
         try {
             this.fileLock.lock();
-            File snapshotTmpFile = Paths.get("snapshot.tmp").toFile();
-            File snapshotFile = Paths.get("snapshot.db").toFile();
-            FileReader fileReader = new FileReader(walFile);
+            File snapshotTmpFile = Paths.get(this.snapshotFilePrefix + "tmp").toFile();
+            File snapshotFile = Paths.get(this.snapshotFilePrefix + ".db").toFile();
+            FileReader walFileReader = new FileReader(walFile);
             try (
-                    BufferedReader bufferedReader = new BufferedReader(fileReader);
+                    BufferedReader walBufferedReader = new BufferedReader(walFileReader);
                     BufferedWriter snapshotBufferedWriter = new BufferedWriter(new FileWriter(snapshotTmpFile))
             ) {
                 String line;
-                while ((line = bufferedReader.readLine()) != null) {
-                    String[] parts = line.split(",");
-                    if (parts.length < 3) continue;
-
-                    String key = parts[1]; // todo extract current keys in mem
-
+                while ((line = walBufferedReader.readLine()) != null) {
                     snapshotBufferedWriter.write(line);
                     snapshotBufferedWriter.newLine();
                 }
@@ -80,14 +65,13 @@ public class WriteAheadLog {
                     throw new IOException("Failed to rename snapshot file from " + snapshotTmpFile + " to " + snapshotFile);
                 }
                 this.truncateWal();
-                return snapshotFile;
             }
         } finally {
             this.fileLock.unlock();
         }
     }
 
-    private void truncateWal() throws IOException {
+    public void truncateWal() throws IOException {
         this.closeWalWriter();
         try (RandomAccessFile raf = new RandomAccessFile(this.walFile.getPath(), "rw");
              FileChannel fileChannel = raf.getChannel()) {
@@ -98,11 +82,11 @@ public class WriteAheadLog {
         setNewWalWriter();
     }
 
-    private void closeWalWriter() throws IOException {
+    public void closeWalWriter() throws IOException {
         bufferedWalWriter.close();
     }
 
-    private void setNewWalWriter() throws IOException {
+    public void setNewWalWriter() {
         this.bufferedWalWriter = new BufferedWriter(this.walFileWriter);
     }
 }
