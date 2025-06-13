@@ -12,25 +12,29 @@ import java.util.concurrent.TimeUnit;
 public class SnapshotController implements ICrashRecoveryStrategy {
     private final IWriteAheadLogStrategy writeAheadLog;
     private final String snapshotFilePrefix;
+    private final ScheduledExecutorService snapshotScheduler;
 
     public SnapshotController(String nodeName) throws IOException {
         this.snapshotFilePrefix = "snapshot-" + nodeName;
         this.writeAheadLog = new RawTextWriteAheadLog(nodeName, snapshotFilePrefix);
-        try (ScheduledExecutorService snapshotScheduler = Executors.newSingleThreadScheduledExecutor()) {
+        this.snapshotScheduler = Executors.newSingleThreadScheduledExecutor();
+        this.scheduleSnapshotExecution();
+   }
 
-            snapshotScheduler.scheduleAtFixedRate(
-                    () -> {
-                        try {
-                            this.writeAheadLog.takeSnapshot();
-                        } catch (IOException e) {
-                            System.out.println("Failed to take snapshot!");
-                        }
-                    },
-                    180,
-                    180,
-                    TimeUnit.SECONDS
-            );
-        }
+    public void scheduleSnapshotExecution() {
+        this.snapshotScheduler.scheduleAtFixedRate(
+                () -> {
+                    try {
+                        this.writeAheadLog.takeSnapshot();
+                    } catch (IOException e) {
+                        System.out.println("Failed to take snapshot!");
+                        System.out.println(e.getMessage());
+                    }
+                },
+                30,
+                30,
+                TimeUnit.SECONDS
+        );
     }
 
     @Override
@@ -50,19 +54,23 @@ public class SnapshotController implements ICrashRecoveryStrategy {
 
             return new Iterator<>() {
                 String nextLine = readNextValidLine();
+                boolean snapshotReaderOpen = true;
+                boolean walReaderOpen = true;
 
                 private String readNextValidLine() {
                     try {
                         String line;
-                        while ((line = snapshotBufferedReader.readLine()) != null) {
+                        while (snapshotReaderOpen && (line = snapshotBufferedReader.readLine()) != null) {
                             if (line.contains(",")) return line;
                         }
                         snapshotBufferedReader.close(); // Close reader once finished
+                        snapshotReaderOpen = false;
 
-                        while ((line = walBufferedReader.readLine()) != null) {
+                        while (walReaderOpen && (line = walBufferedReader.readLine()) != null) {
                             if (line.contains(",")) return line;
                         }
                         walBufferedReader.close();
+                        walReaderOpen = false;
                     } catch (IOException e) {
                         throw new RuntimeException("Failed to read snapshot file" + e.getMessage(), e);
                     }

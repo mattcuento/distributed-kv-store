@@ -68,7 +68,7 @@ public class ExternalHttpServer {
 
             String query = exchange.getRequestURI().getQuery();
             if (query == null || !query.contains("key=") || !query.contains("&value=")) {
-                sendResponse(exchange, "Missing 'key' or 'value' parameter", 400);
+                sendResponse(exchange, "Missing 'key' or 'value' parameter" , 400);
                 return;
             }
 

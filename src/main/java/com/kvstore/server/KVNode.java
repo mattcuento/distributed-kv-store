@@ -10,6 +10,7 @@ public class KVNode {
     private final IDatabaseAPI databaseInstance;
 
     public KVNode(String nodeName, IDatabaseAPI databaseInstance) throws IOException {
+        System.out.println("Initializing " + nodeName);
         this.databaseInstance = databaseInstance;
     }
 
